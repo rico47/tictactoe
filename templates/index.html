@@ -24,24 +24,19 @@
         }
         .board {
             display: grid;
-            grid-template-columns: repeat(3, 100px);
-            grid-template-rows: repeat(3, 100px);
             gap: 5px;
             margin: 20px auto;
-            width: 315px; /* 3*100px + 2*5px */
-            height: 315px; /* 3*100px + 2*5px */
             border: 2px solid #343a40;
             border-radius: 5px;
             overflow: hidden;
+            /* Dynamiczne stylowanie zostanie dodane przez JS */
         }
         .cell {
-            width: 100px;
-            height: 100px;
             background-color: #e9ecef;
             display: flex;
             justify-content: center;
             align-items: center;
-            font-size: 3em;
+            font-size: 3em; /* Można dostosować w zależności od rozmiaru planszy */
             font-weight: bold;
             cursor: pointer;
             transition: background-color 0.2s ease-in-out;
@@ -66,6 +61,16 @@
 <body>
     <div class="game-container">
         <h1 class="mb-4">Kółko i Krzyżyk</h1>
+
+        <div class="mb-3">
+            <label for="boardSizeSelect" class="form-label">Wybierz rozmiar planszy:</label>
+            <select class="form-select" id="boardSizeSelect">
+                <option value="3">3x3</option>
+                <option value="4">4x4</option>
+                <option value="5">5x5</option>
+            </select>
+        </div>
+
         <div id="game-message" class="alert alert-info" role="alert">
             Aktualny gracz: <span id="current-player-display">X</span>
         </div>
@@ -80,19 +85,26 @@
         const gameMessageElement = document.getElementById('game-message');
         const currentPlayerDisplay = document.getElementById('current-player-display');
         const resetButton = document.getElementById('reset-button');
+        const boardSizeSelect = document.getElementById('boardSizeSelect');
 
-        let gameState = {
-            board: ['', '', '', '', '', '', '', '', ''],
-            current_player: 'X',
-            game_over: false,
-            winner: null
-        };
+        // Użyj initial_game_state przekazanego z Flaska
+        let gameState = {{ initial_game_state | tojson }};
 
         function renderBoard() {
+            const boardSize = gameState.board_size;
+            const cellSize = 100 / boardSize * 3; // Dostosuj rozmiar komórki, aby plansza była czytelna
+
             boardElement.innerHTML = ''; // Wyczyść planszę
+            boardElement.style.gridTemplateColumns = `repeat(${boardSize}, ${cellSize}px)`;
+            boardElement.style.gridTemplateRows = `repeat(${boardSize}, ${cellSize}px)`;
+            boardElement.style.width = `${boardSize * cellSize + (boardSize - 1) * 5 + 4}px`; // Dodaj gapy i border
+            boardElement.style.height = `${boardSize * cellSize + (boardSize - 1) * 5 + 4}px`; // Dodaj gapy i border
+
             gameState.board.forEach((cell, index) => {
                 const cellDiv = document.createElement('div');
                 cellDiv.classList.add('cell', 'd-flex', 'justify-content-center', 'align-items-center');
+                // Dynamicznie dostosuj rozmiar czcionki
+                cellDiv.style.fontSize = `${cellSize * 0.4}px`;
                 if (cell === 'X') {
                     cellDiv.classList.add('X');
                 } else if (cell === 'O') {
@@ -119,7 +131,7 @@
                 } else {
                     gameMessageElement.classList.remove('alert-success', 'alert-warning');
                     gameMessageElement.classList.add('alert-info');
-                    gameMessageElement.textContent = 'Koniec gry!'; // Nie powinno się zdarzyć, ale na wszelki wypadek
+                    gameMessageElement.textContent = 'Koniec gry!';
                 }
             } else {
                 gameMessageElement.classList.remove('alert-success', 'alert-warning');
@@ -130,7 +142,7 @@
         }
 
         async function handleCellClick(event) {
-            if (gameState.game_over) return; // Nie zezwalaj na ruchy po zakończeniu gry
+            if (gameState.game_over) return;
 
             const cellIndex = parseInt(event.target.dataset.index);
 
@@ -147,8 +159,13 @@
         }
 
         async function resetGame() {
+            const selectedBoardSize = parseInt(boardSizeSelect.value);
             const response = await fetch('/reset_game', {
-                method: 'POST'
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ board_size: selectedBoardSize })
             });
             const data = await response.json();
             gameState = data;
@@ -157,10 +174,13 @@
 
         // Inicjalizacja gry
         document.addEventListener('DOMContentLoaded', () => {
+            // Ustawiamy domyślny rozmiar planszy w select na podstawie initial_game_state
+            boardSizeSelect.value = gameState.board_size;
             renderBoard();
         });
 
         resetButton.addEventListener('click', resetGame);
+        boardSizeSelect.addEventListener('change', resetGame); // Resetuj grę po zmianie rozmiaru
     </script>
 </body>
 </html>
