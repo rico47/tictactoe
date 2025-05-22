@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tic Tac Toe</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-QWTKZyjpPEjISv5WaRU9OerWvWaR6hNoi+2FhkfM6A2Y/aT9P1zW/E5O5yI9KzZ" crossorigin="anonymous">
+    <style>
+        body {
+            background-color: #f8f9fa;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            margin: 0;
+            font-family: Arial, sans-serif;
+        }
+        .game-container {
+            background-color: #ffffff;
+            border-radius: 10px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+            padding: 30px;
+            text-align: center;
+        }
+        .board {
+            display: grid;
+            grid-template-columns: repeat(3, 100px);
+            grid-template-rows: repeat(3, 100px);
+            gap: 5px;
+            margin: 20px auto;
+            width: 315px; /* 3*100px + 2*5px */
+            height: 315px; /* 3*100px + 2*5px */
+            border: 2px solid #343a40;
+            border-radius: 5px;
+            overflow: hidden;
+        }
+        .cell {
+            width: 100px;
+            height: 100px;
+            background-color: #e9ecef;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 3em;
+            font-weight: bold;
+            cursor: pointer;
+            transition: background-color 0.2s ease-in-out;
+            border: 1px solid #ced4da;
+        }
+        .cell:hover {
+            background-color: #dee2e6;
+        }
+        .cell.X {
+            color: #dc3545; /* Czerwony */
+        }
+        .cell.O {
+            color: #007bff; /* Niebieski */
+        }
+        #game-message {
+            margin-top: 20px;
+            font-size: 1.5em;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+    <div class="game-container">
+        <h1 class="mb-4">Kółko i Krzyżyk</h1>
+        <div id="game-message" class="alert alert-info" role="alert">
+            Aktualny gracz: <span id="current-player-display">X</span>
+        </div>
+        <div class="board" id="board">
+            </div>
+        <button id="reset-button" class="btn btn-primary mt-3">Resetuj Grę</button>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js" integrity="sha384-YvpcrYf0tY3lHB60NNkmXc5s9fDVZLESaAA55NDzOxhy9GkcIdslK1eN7N6jIeHz" crossorigin="anonymous"></script>
+    <script>
+        const boardElement = document.getElementById('board');
+        const gameMessageElement = document.getElementById('game-message');
+        const currentPlayerDisplay = document.getElementById('current-player-display');
+        const resetButton = document.getElementById('reset-button');
+
+        let gameState = {
+            board: ['', '', '', '', '', '', '', '', ''],
+            current_player: 'X',
+            game_over: false,
+            winner: null
+        };
+
+        function renderBoard() {
+            boardElement.innerHTML = ''; // Wyczyść planszę
+            gameState.board.forEach((cell, index) => {
+                const cellDiv = document.createElement('div');
+                cellDiv.classList.add('cell', 'd-flex', 'justify-content-center', 'align-items-center');
+                if (cell === 'X') {
+                    cellDiv.classList.add('X');
+                } else if (cell === 'O') {
+                    cellDiv.classList.add('O');
+                }
+                cellDiv.textContent = cell;
+                cellDiv.dataset.index = index;
+                cellDiv.addEventListener('click', handleCellClick);
+                boardElement.appendChild(cellDiv);
+            });
+            updateGameMessage();
+        }
+
+        function updateGameMessage() {
+            if (gameState.game_over) {
+                if (gameState.winner === 'Remis') {
+                    gameMessageElement.classList.remove('alert-info', 'alert-success');
+                    gameMessageElement.classList.add('alert-warning');
+                    gameMessageElement.textContent = 'Koniec gry! Remis!';
+                } else if (gameState.winner) {
+                    gameMessageElement.classList.remove('alert-info', 'alert-warning');
+                    gameMessageElement.classList.add('alert-success');
+                    gameMessageElement.textContent = `Wygrywa: ${gameState.winner}!`;
+                } else {
+                    gameMessageElement.classList.remove('alert-success', 'alert-warning');
+                    gameMessageElement.classList.add('alert-info');
+                    gameMessageElement.textContent = 'Koniec gry!'; // Nie powinno się zdarzyć, ale na wszelki wypadek
+                }
+            } else {
+                gameMessageElement.classList.remove('alert-success', 'alert-warning');
+                gameMessageElement.classList.add('alert-info');
+                currentPlayerDisplay.textContent = gameState.current_player;
+                gameMessageElement.innerHTML = `Aktualny gracz: <span id="current-player-display">${gameState.current_player}</span>`;
+            }
+        }
+
+        async function handleCellClick(event) {
+            if (gameState.game_over) return; // Nie zezwalaj na ruchy po zakończeniu gry
+
+            const cellIndex = parseInt(event.target.dataset.index);
+
+            const response = await fetch('/make_move', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ cell_index: cellIndex })
+            });
+            const data = await response.json();
+            gameState = data;
+            renderBoard();
+        }
+
+        async function resetGame() {
+            const response = await fetch('/reset_game', {
+                method: 'POST'
+            });
+            const data = await response.json();
+            gameState = data;
+            renderBoard();
+        }
+
+        // Inicjalizacja gry
+        document.addEventListener('DOMContentLoaded', () => {
+            renderBoard();
+        });
+
+        resetButton.addEventListener('click', resetGame);
+    </script>
+</body>
+</html>
